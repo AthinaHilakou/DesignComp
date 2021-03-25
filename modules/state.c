@@ -1,18 +1,23 @@
 
 #include <stdlib.h>
-
+#include <stdio.h>
 #include "ADTVector.h"
 #include "ADTList.h"
 #include "state.h"
 
-
+int* create_int(int value)
+	{
+		int* pointer = malloc(sizeof(int));		// δέσμευση μνήμης
+		*pointer = value;						// αντιγραφή του value στον νέο ακέραιο
+		return pointer;
+	}
 // Οι ολοκληρωμένες πληροφορίες της κατάστασης του παιχνιδιού.
 // Ο τύπος State είναι pointer σε αυτό το struct, αλλά το ίδιο το struct
 // δεν είναι ορατό στον χρήστη.
 
 struct state {
 	Vector objects;			// περιέχει στοιχεία Object (Εμπόδια / Εχθροί / Πύλες)
-	List portal_pairs;		// περιέχει PortaPair (ζευγάρια πυλών, είσοδος/έξοδος)
+	List portal_pairs;		// περιέχει PortalPair (ζευγάρια πυλών, είσοδος/έξοδος)
 
 	struct state_info info;
 };
@@ -98,28 +103,75 @@ State state_create() {
 		// Τα αντικείμενα είναι ομοιόμορφα τοποθετημένα σε απόσταση SPACING
 		// μεταξύ τους, και "κάθονται" πάνω στο δάπεδο.
 
-		obj->rect.x = (i+1) * SPACING;
+		obj->rect.x = (i+1) * SPACING;                 //το προηγουμενο +700
 		obj->rect.y = - obj->rect.height;
 	}
 
-	// TODO: αρχικοποίηση της λίστας obj->portal_pairs
+	// TODO: αρχικοποίηση της λίστας state->portal_pairs
+
+	List portal_pairs = list_create(NULL);
+
+	int t[PORTAL_NUM/2];                                   // πινακας με περιεχομενα τα exit που εχω πετυχει 
+	for(int i = 0; i < PORTAL_NUM/2; i++) {     // odd !?
+		
+		PortalPair pair = malloc(sizeof(*pair));
+		//αρχικοποιηση των pairs
+		Object entrance = malloc(sizeof(*entrance));
+		Object exit = malloc(sizeof(*exit));
+		pair->entrance = i+1;
+
+		int k = rand() % 100 + 1;  
+		int j = 0;
+		while(j < 50)
+			if(k == t[j]) { k = rand() % 100 + 1;   j = 0;}	
+			else	j++;
+
+		pair->exit = k;
+		t[i] = k;
+
+		printf("%d, %d\n",pair->entrance,pair->exit);
+	 	list_insert_next(portal_pairs, list_last(portal_pairs), pair); 
+	}
 
 	return state;
 }
 
 // Επιστρέφει τις βασικές πληροφορίες του παιχνιδιού στην κατάσταση state
 
-StateInfo state_info(State state) {
-	// Προς υλοποίηση
-	return NULL;
+StateInfo state_info(State state) {				// Προς υλοποίηση
+	
+	// StateInfo state_new = malloc(sizeof(*state_new));    // free (???)
+
+	// struct state_new {
+	// 	Object character;				
+	// 	int current_portal;				
+	// 	int wins;						
+	// 	bool playing;				
+	// 	bool paused;
+	// };
+
+	return &(state->info) ; 
 }
 
 // Επιστρέφει μια λίστα με όλα τα αντικείμενα του παιχνιδιού στην κατάσταση state,
 // των οποίων η συντεταγμένη x είναι ανάμεσα στο x_from και x_to.
 
-List state_objects(State state, float x_from, float x_to) {
-	// Προς υλοποίηση
-	return NULL;
+List state_objects(State state, float x_from, float x_to) {			// Προς υλοποίηση
+	Vector vec = state->objects;
+	List list = list_create(free);
+	ListNode list_node = list_first(list);
+
+ 	for(VectorNode vec_node = vector_first(vec);        
+    	vec_node != VECTOR_EOF;                        
+   		vec_node = vector_next(vec, vec_node)) {	
+		Object obj = vector_node_value(vec, vec_node);
+		// Αν το object ειναι αναμεσα στις συντεταγμενες που με ενδιαφερουν
+		if(obj->rect.x >= x_from && obj->rect.x <= x_to) {
+			list_insert_next(list, list_node, obj);		// Βαλτο στη λιστα
+			list_node = list_next(list, list_node);
+		} 
+	}
+	return list;
 }
 
 // Ενημερώνει την κατάσταση state του παιχνιδιού μετά την πάροδο 1 frame.
@@ -132,5 +184,5 @@ void state_update(State state, KeyState keys) {
 // Καταστρέφει την κατάσταση state ελευθερώνοντας τη δεσμευμένη μνήμη.
 
 void state_destroy(State state) {
-	// Προς υλοποίηση
+	free(state);
 }

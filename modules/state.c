@@ -10,9 +10,8 @@
 // 	*pointer = value;						// αντιγραφή του value στον νέο ακέραιο
 // 	return pointer;
 // }
-int end_game = 0;
 
-int compare_entrances(Pointer a, Pointer b){
+int compare_entrances(Object a, Object b){
 	return *(int*)a - *(int*)b; 
 }
 
@@ -20,12 +19,6 @@ int compare_entrances(Pointer a, Pointer b){
 // Ο τύπος State είναι pointer σε αυτό το struct, αλλά το ίδιο το struct
 // δεν είναι ορατό στον χρήστη.
 
-struct state {
-	Vector objects;			// περιέχει στοιχεία Object (Εμπόδια / Εχθροί / Πύλες)
-	List portal_pairs;		// περιέχει PortalPair (ζευγάρια πυλών, είσοδος/έξοδος)
-
-	struct state_info info;
-};
 
 // Ζευγάρια πυλών
 
@@ -35,7 +28,6 @@ typedef struct portal_pair {
 }* PortalPair;
 
 
-
 // Δημιουργεί και επιστρέφει την αρχική κατάσταση του παιχνιδιού
 
 State state_create() {
@@ -43,7 +35,7 @@ State state_create() {
 	State state = malloc(sizeof(*state));
 
 	// Γενικές πληροφορίες
-	state->info.current_portal = 0;			// Δεν έχουμε περάσει καμία πύλη
+	state->info.current_portal = 1;			// Δεν έχουμε περάσει καμία πύλη
 	state->info.wins = 0;					// Δεν έχουμε νίκες ακόμα
 	state->info.playing = true;				// Το παιχνίδι ξεκινάει αμέσως
 	state->info.paused = false;				// Χωρίς να είναι paused.
@@ -69,16 +61,17 @@ State state_create() {
 	// τα y μεγαλώνουν προς τα κάτω, οπότε πχ ο χαρακτήρας που έχει height=38,
 	// αν θέλουμε να "κάθεται" πάνω στο δάπεδο, θα πρέπει να έχει y=-38.
 
-	character->rect.width = 70;
-	character->rect.height = 38;
+	character->rect.width = 38;
+	character->rect.height = 70;
 	character->rect.x = 0;
-	character->rect.y = - character->rect.height;
+	character->rect.y = SCREEN_HEIGHT - character->rect.height; 
 
 	// Δημιουργία των objects (πύλες / εμπόδια / εχθροί) και προσθήκη στο vector
 	// state->objects. Η πίστα περιέχει συνολικά 4*PORTAL_NUM αντικείμενα, από
 	// τα οποία τα PORTAL_NUM είναι πύλες, και τα υπόλοια εμπόδια και εχθροί.
 
 	state->objects = vector_create(0, free);		// Δημιουργία του vector
+	state->portal_pairs = list_create(free);
 
 	for (int i = 0; i < 4*PORTAL_NUM; i++) {
 		// Δημιουργία του Object και προσθήκη στο vector
@@ -93,10 +86,10 @@ State state_create() {
 			obj->rect.width = 100;
 			obj->rect.height = 5;
 		}
-		else if(rand() % 2 == 0) {				// Για τα υπόλοιπα, με πιθανότητα 50%
+		else if(rand() % 2 == 0) {				    // Για τα υπόλοιπα, με πιθανότητα 50%
 			obj->type = OBSTACLE;					// επιλέγουμε εμπόδιο.
 			obj->rect.width = 10;
-			obj->rect.height = 80;
+			obj->rect.height = 60;
 		} 
 		else {
 			obj->type = ENEMY;						// Και τα υπόλοιπα είναι εχθροί.
@@ -108,42 +101,45 @@ State state_create() {
 		// Τα αντικείμενα είναι ομοιόμορφα τοποθετημένα σε απόσταση SPACING
 		// μεταξύ τους, και "κάθονται" πάνω στο δάπεδο.
 
-		obj->rect.x = (i+1) * SPACING;                 //το προηγουμενο +700
-		obj->rect.y = - obj->rect.height;
+		obj->rect.x = (i+1) * SPACING;                 // το προηγουμενο +700
+		obj->rect.y = SCREEN_HEIGHT - obj->rect.height;
+		
 	}
 
-	// TODO: αρχικοποίηση της λίστας state->portal_pairs
+	// Aρχικοποίηση της λίστας state->portal_pairs
 
-	List portal_pairs = list_create(NULL);
+	state->portal_pairs = list_create(free);          //List portal_pairs = list_create(free)
 
-	int t[PORTAL_NUM/2];                                   // πινακας με περιεχομενα τα exit που εχω πετυχει 
-	for(int i = 0; i < PORTAL_NUM/2; i++) {       // odd !?
-		
+	int t[PORTAL_NUM];                                   // πινακας με περιεχομενα τα exit που εχω πετυχει 
+	for(int i = 0; i < PORTAL_NUM; i++) {    
+		// αρχικοποιηση των pairs
 		PortalPair pair = malloc(sizeof(*pair));
-		//αρχικοποιηση των pairs
-		Object entrance = malloc(sizeof(*entrance));
-		Object exit = malloc(sizeof(*exit));
-		pair->entrance = i+1;                      // cast !
+		
+		//Object entrance = malloc(sizeof(*entrance));
+		//Object exit = malloc(sizeof(*exit));
+		pair->entrance = (Object)(i+1);
 
-		int k = rand() % 100 + 1;  
+		int k = rand() % PORTAL_NUM + 1;  
 		int j = 0;
-		while(j < 50)
-			if(k == t[j]) { k = rand() % 100 + 1;   j = 0; }	
+		while(j < 100) {
+			if(k == t[j]) { k = rand() % PORTAL_NUM + 1;   j = 0;}	
 			else	j++;
+		}
 
-		pair->exit = k;								// cast !
+		pair->exit = (Object)k;
 		t[i] = k;
 
-		//printf("%d, %d\n",pair->entrance,pair->exit);
-	 	list_insert_next(portal_pairs, list_last(portal_pairs), pair); 
+		//printf("%d %d\n",pair->entrance, pair->exit);
+	 	list_insert_next(state->portal_pairs, list_last(state->portal_pairs), pair); 
+		PortalPair val = list_node_value(state->portal_pairs, list_last(state->portal_pairs));
+		//printf("%d %d\n",val->entrance, val->exit); 
 	}
-
 	return state;
 }
 
 // Επιστρέφει τις βασικές πληροφορίες του παιχνιδιού στην κατάσταση state
 
-StateInfo state_info(State state) {				// Προς υλοποίηση
+StateInfo state_info(State state) {				
 	return &(state->info); 
 }
 
@@ -151,109 +147,189 @@ StateInfo state_info(State state) {				// Προς υλοποίηση
 // των οποίων η συντεταγμένη x είναι ανάμεσα στο x_from και x_to.
 
 List state_objects(State state, float x_from, float x_to) {			// Προς υλοποίηση
-	Vector vec = state->objects;
 	List list = list_create(free);
-	ListNode list_node = list_first(list);
 
- 	for(VectorNode vec_node = vector_first(vec);        
+ 	for(VectorNode vec_node = vector_first(state->objects);        
     	vec_node != VECTOR_EOF;                        
-   		vec_node = vector_next(vec, vec_node)) {	
-		Object obj = vector_node_value(vec, vec_node);
+   		vec_node = vector_next(state->objects, vec_node)) {	
+		
+		Object obj = vector_node_value(state->objects, vec_node);
+
 		// Αν το object ειναι αναμεσα στις συντεταγμενες που με ενδιαφερουν
 		if(obj->rect.x >= x_from && obj->rect.x <= x_to) {
-			list_insert_next(list, list_node, obj);		// Βαλτο στη λιστα
-			list_node = list_next(list, list_node);
-		} 
+			list_insert_next(list, list_last(list), obj);		// Βαλτο στη λιστα
+		}
 	}
 	return list;
 }
 
+static int forward = 1, up = 0, f = 1, fast = 1;
 
 // Ενημερώνει την κατάσταση state του παιχνιδιού μετά την πάροδο 1 frame.
 // Το keys περιέχει τα πλήκτρα τα οποία ήταν πατημένα κατά το frame αυτό.
 
 void state_update(State state, KeyState keys) {		
 	// character update
-	if(keys->enter == false && keys->left == false && keys->right == false && keys->up == false && keys->n == false && keys->p == false )
-		state->info.character->rect.x +=7;
-	else if(keys->right != false)
-		state->info.character->rect.x +=12;
-	else if(keys->left != false){
-		state->info.character->forward = false;
-		//state->info.character->rect.x -=7;
-	}
-	else if(keys->up != false){
-		if(state->info.character->rect.y < 220)
-			state->info.character->rect.y -= 15;
-		else	
-			state->info.character->rect.y += 15; 
-	}
-	else if(keys->enter != false && end_game == 1){
-		end_game = 0;
+	if((keys->enter != false) && (state->info.playing == false) ){
+		state->info.current_portal = 1;			
+		state->info.wins = 0;					
+		state->info.playing = true;				
+		state->info.paused = false;	
+		state->info.character->rect.x = 0;
 		state_create();
-	}
-	else if(keys->p != false){
-		if(state->info.playing == 1)	state->info.playing == 0;
-		else 	state->info.playing == 1;
-		//if(keys->n != false)
-	}
+		return;
 		
+	}
+	if((keys->p != false) && (state->info.playing == false)) {
+		state->info.playing = true;
+		return;
+	}
+	if(state->info.playing == true){
+		if(state->info.character->rect.x >= SCREEN_WIDTH/2 && forward == 1) {
+			state->info.character->rect.x = SCREEN_WIDTH/2;
+		}
+		else if(state->info.character->rect.x < SCREEN_WIDTH/2 && forward == -1){
+			state->info.character->rect.x = SCREEN_WIDTH/2;
+		}
 
-	// enemies update
-	for(int i = 0; i < 4*PORTAL_NUM; i++){
-		Object obj = vector_get_at(state->objects, i);
-		if(obj->type == ENEMY)	{	
-			obj->rect.x += 5;
-			if(state->info.character->rect.x == obj->rect.x) { // συγκρουση εχθρου με εμποδιο 
-				end_game = 1; // Μηνυμα για enter !!
-				exit(1);
-			}	                                     
-			else {
-				for(int j = 0; j < 4*PORTAL_NUM; j++){
-					Object obj2 = vector_get_at(state->objects, i);
-					if(obj2->type == OBSTACLE && obj->rect.x == obj2->rect.x)
-						obj->forward = true;
-				}
+		if(keys->enter == false && keys->left == false && keys->right == false && keys->up == false && keys->n == false && keys->p == false ){
+			state->info.character->rect.x += 7*(forward);
+			fast = 1;
+
+			if(state->info.character->rect.y > 220 && up == -1)
+				state->info.character->rect.y += 15*(up);
+			else{
+				up = 0;
+				if(state->info.character->rect.y < SCREEN_HEIGHT - 70 )
+					state->info.character->rect.y += 15;
 			}	
+		}	
+		else if(keys->right != false) {
+			if(forward = -1) 	forward = 1;
+			//fast = 2;
+		}		
+		else if(keys->left != false){
+			forward = -1;
 		}
-		else if(obj->type == OBSTACLE) {
-			if(state->info.character->rect.x == obj->rect.x){  // συγκρουση χαρακτηρα με εμποδιο
-				end_game = 1;
-				exit(1);
-			}									  // Μηνυμα για enter !!
+		else if(keys->up != false && (state->info.character->rect.y == SCREEN_HEIGHT - state->info.character->rect.height)){
+			up = -1;
+		} 
+		else if(keys->p != false){
+			state->info.playing = false;
+			//if(keys->n != false)
 		}
-		else {                                                // συγκρουση εμποδιου ή εχθρου με πυλη 
-			int count = 0;       							  // συνολο νικων                                          
-			Object obj = vector_get_at(state->objects, i);    // portal
-			for(int j = 0; j < 4*PORTAL_NUM; j++) {
-				Object obj2 = vector_get_at(state->objects, j);									
-				if((obj2->type != PORTAL) && (obj2->rect.x == obj->rect.x)) {
-					if(obj->forward == true) {
-						ListNode node = list_first(state->portal_pairs);
-						for(int k = 0; k < PORTAL_NUM; k++) {
-							PortalPair pair = malloc(sizeof(*pair)); 
-							pair = list_find(state->portal_pairs, node, compare_entrances);
-							if(pair->entrance == (j % 4) + 1) {
-								obj->rect.x = pair->exit->rect.x;
-								if((obj->type == CHARACTER) && (pair->exit == PORTAL_NUM)) {
-									count++;
-									state->info.character->rect.x = 0;				
-								}
-							}
-							node = list_next(state->portal_pairs, node);
-						}
+		
+	
+		// enemies update
+		for(int i = 0; i < 4*PORTAL_NUM; i++) {
+			Object obj = vector_get_at(state->objects, i);
+			if(obj->type == ENEMY)	{	
+				// συγκρουση χαρακτηρα με εχθρο 	
+				for(int j = 0; j < 4*PORTAL_NUM; j++){
+					Object obj2 = vector_get_at(state->objects, j);   
+					// συγκρουση εχθρου με εμποδιο  
+					if((CheckCollisionRecs(obj2->rect, obj->rect) == 1) && (obj2->type == OBSTACLE)) {
+						//obj->forward = true;
+						f = -1;
+						//break;
 					}
 					
+					if((CheckCollisionRecs(obj2->rect, obj->rect) == 1) && (obj2->type == PORTAL)) {
+						//obj->forward = true;
+						f = -1;
+						//break;
+					}							
 				}
+				if(CheckCollisionRecs(obj->rect, state->info.character->rect) == 1){ 
+					state->info.playing = false;
+				}	                                     
+				else {
+					obj->rect.x -= 5*f*fast;
+				}	
+			}
+			else if(obj->type == OBSTACLE) {
+				// συγκρουση εμποδιο με χαρακτηρα
+				obj->rect.x -= 7*forward*fast;                                              
+				if(CheckCollisionRecs(state->info.character->rect, obj->rect) == 1){
+					state->info.playing = false;				
+				}									  
+			}
+			else if(obj->type == PORTAL) {  
+				obj->rect.x -= 7*forward*fast;                                              
+				// συγκρουση εμποδιου ή εχθρου με πυλη 								
+				if((CheckCollisionRecs(obj->rect, state->info.character->rect) == 1)) {     
+					obj->rect.x -= 50*forward;
+					for(ListNode node = list_first(state->portal_pairs);       
+						node != LIST_EOF;                         
+						node = list_next(state->portal_pairs, node)) {
+
+						PortalPair pair = list_node_value(state->portal_pairs, node);
+						
+						if(pair->entrance == state->info.current_portal) {
+							state->info.current_portal = pair->exit;
+							if(pair->exit == 100) {
+								state->info.wins ++;
+								state->info.playing = false;
+							}
+							break;			
+						}
+					}
+				
+				}
+				// else {
+				// 	for(int j = 0; j < 4*PORTAL_NUM; j++) {
+				// 		Object obj2 = vector_get_at(state->objects, j);	
+				// 		if(obj2->type == ENEMY && (CheckCollisionRecs(obj2->rect, obj->rect) == 1)) {
+				// 			for(ListNode node = list_first(state->portal_pairs);       
+				// 				node != LIST_EOF;                         
+				// 				node = list_next(state->portal_pairs, node)) {
+
+				// 				//PortalPair pair = malloc(sizeof(*pair)); 
+				// 				PortalPair pair = list_node_value(state->portal_pairs, node);
+								
+				// 				if(pair->entrance == state->info.current_portal) {
+				// 					//printf("%d %d,",pair->entrance, pair->exit); 
+				// 					state->info.current_portal = pair->exit;
+				// 					if(pair->exit == 100) {
+				// 						state->info.wins ++;
+				// 						state->info.playing = false;
+				// 					}
+				// 					break;
+				// 				}
+				// 			}	
+				// 		}
+						
+				// 	}
+				// } 
+					 
+				
 			}
 		}
 	}
+	
 
 }
+
 
 // Καταστρέφει την κατάσταση state ελευθερώνοντας τη δεσμευμένη μνήμη.
 
 void state_destroy(State state) {
+	//free(state->info.character);
+	//free(state->info.character);
+	//free(state->info.current_portal);
+
+	ListNode node = list_first(state->portal_pairs);
+	while(node != NULL) {
+		list_remove_next(state->portal_pairs, node);
+		node = list_next(state->portal_pairs, node);
+	}
+	list_destroy(state->portal_pairs);
+	
+	while(vector_size(state->objects) > 0) {
+		vector_remove_last(state->objects);
+	}
+	vector_destroy(state->objects);
+	
 	free(state);
 }
 

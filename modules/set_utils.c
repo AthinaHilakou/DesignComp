@@ -2,27 +2,29 @@
 #include <stdio.h>
 #include "ADTVector.h"
 #include "ADTSet.h"
-#include "set_utils.h"
+//#include "set_utils.h"
+#include "state.h"
 
-int Compare_ints(Pointer a, Pointer b){
-	return *(int*)a - *(int*)b;
+
+int compare(Pointer a, Pointer b) {
+	
+    Object object1 = (Object)a;
+    Object object2 = (Object)b;
+
+    return object1->rect.x - object2->rect.x;
 }
-int Compare_strings(Pointer a,Pointer b) {
-    return strcmp(a, b);
-}
+
 
 Pointer set_find_eq_or_greater(Set set, Pointer value){
     
     if(set_find_node(set, value) != SET_EOF) 
        return value;
  
-    int d;
-
     for(SetNode node = set_first(set);        
         node != SET_EOF;                        
         node = set_next(set, node)) {          
         
-        d = Compare_strings(set_node_value(set, node), value);
+        int d = compare(set_node_value(set, node), value);
         if(d > 0)  
             return set_node_value(set, node);    
     }
@@ -30,15 +32,43 @@ Pointer set_find_eq_or_greater(Set set, Pointer value){
     return NULL;
 }
 
-
-
 Pointer set_find_eq_or_smaller(Set set, Pointer value){
     
     if(set_find_node(set, value) != SET_EOF) 
        return value;
-    Pointer f = set_find_eq_or_greater(set, value);
-    if(f != NULL) {
-        return set_node_value(set, set_previous(set, set_find_node(set, f)));
+    
+    Pointer d = NULL;
+    for(SetNode node = set_first(set);        
+        node != SET_EOF;                        
+        node = set_next(set, node)) {          
+        
+        if(compare(set_node_value(set, node), value) < 0)  
+           d = set_node_value(set, node);
+        else    
+            return d;    
     }
+
+    return NULL;
+}
+
+
+
+
+Pointer set_find_smaller(Set set, Pointer value){
+    
+    if(set_find_node(set, value) != SET_EOF) 
+       return value;
+
+    for(SetNode node = set_first(set);        
+        node != SET_EOF;                        
+        node = set_next(set, node)) {          
+        
+        Pointer d;
+        if(compare(set_node_value(set, node), value) < 0)  
+           d = set_node_value(set, node);
+        else    
+            return d;    
+    }
+
     return NULL;
 }

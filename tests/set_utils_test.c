@@ -41,13 +41,15 @@ Pointer set_find_eq_or_smaller(Set set, Pointer value){
     if(set_find_node(set, value) != SET_EOF) 
        return value;
 
+    Pointer d = NULL;
     for(SetNode node = set_first(set);        
         node != SET_EOF;                        
         node = set_next(set, node)) {          
         
-        int d = compare(set_node_value(set, node), value);
-        if(d < 0)  
-            return set_node_value(set, node);    
+        if(compare(set_node_value(set, node), value) < 0)  
+            d = set_node_value(set, node);
+        else    
+            return d;    
     }
 
     return NULL;
@@ -81,8 +83,6 @@ void test_set_utils() {
     obj2->rect.x = obj1->rect.x + 10;
     TEST_ASSERT(set_find_eq_or_greater(set, obj2) == NULL);
 
-    free(obj1);
-    free(obj2);
     set_destroy(set);
 }
 

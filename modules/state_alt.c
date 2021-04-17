@@ -16,12 +16,10 @@ int compare_port(Pointer a, Pointer b) {
 	return *(int*)a - *(int*)b;
 }
 
-
 int compare_obj(Pointer a, Pointer b) {
 	Object obj1 = (Object)a;
     Object obj2 = (Object)b;
     return obj1->rect.x - obj2->rect.x;
-	//return *(int*)a - *(int*)b;
 }
 
 int* create_int(int value) {
@@ -30,10 +28,7 @@ int* create_int(int value) {
 	return pointer;
 }
 
-State state_create() {
-	// Δημιουργία του state
-	State state = malloc(sizeof(*state));
- 
+void state_init(State state) {
 	// Γενικές πληροφορίες
 	state->info.current_portal = 1;			// Δεν έχουμε περάσει καμία πύλη
 	state->info.wins = 0;					// Δεν έχουμε νίκες ακόμα
@@ -49,10 +44,9 @@ State state_create() {
 	character->rect.width = 38;
 	character->rect.height = 70;
 	character->rect.x = 0;
-	character->rect.y = SCREEN_HEIGHT - character->rect.height; 
-
-	state->objects = set_create(compare_obj, free);
-	state->portal_pairs = map_create(compare_port, free, free);
+	character->rect.y = SCREEN_HEIGHT - character->rect.height;  	
+	
+	state->objects = set_create(compare_obj, NULL);
 
 	for (int i = 0; i < 4*PORTAL_NUM; i++) {
  
@@ -78,9 +72,17 @@ State state_create() {
 		obj->rect.x = (i+1) * SPACING;                
 		obj->rect.y = SCREEN_HEIGHT - obj->rect.height;
 		
-		//printf("%d, %f\n",obj->type,obj->rect.x);
 		set_insert(state->objects, obj);
     }
+}
+
+State state_create() {
+	// Δημιουργία του state
+	State state = malloc(sizeof(*state));
+	state_init(state);
+
+	state->portal_pairs = map_create(compare_port, free, free);
+	srand(0);
 
 	int t[PORTAL_NUM];  
     for(int i = 0; i < PORTAL_NUM; i++) {    
@@ -95,8 +97,8 @@ State state_create() {
 			else	j++;
 		}
 		pair->exit = (Object)(create_int(k));
-		printf("%d %d\n", *(int*)(pair->entrance),*(int*)(pair->exit));
 		t[i] = k;
+
 		map_insert(state->portal_pairs, pair->entrance, pair->exit);
 	}
 
@@ -116,16 +118,11 @@ List state_objects(State state, float x_from, float x_to) {
 
 	for(float x = x_from; x <= x_to; x++) {
 		obj->rect.x = x;
-		// Object object = set_find(state->objects, obj);
-		//printf("%d ", list_size(list_update));
-		Object object = list_find(list_update, obj, compare_obj);
+		Object object = set_find(state->objects, obj);
 		if(object != NULL) {
 			list_insert_next(list, list_last(list), object);
-			//printf("%d: %f\n",object->type, object->rect.x);
-		}
-			
+		}	
 	}
- 	// printf("%d",list_size(list));
 	return list;
 }
 
@@ -137,172 +134,127 @@ float* create_float(float value) {
 
 
 
-int forward = 1, f = 1, up = 0, flag2 = 1;
+int forward = 1, f = 1, up = 0, flag2 = 1, fast;
 
 void state_update(State state, KeyState keys) {	
 	
-	if(state->info.character->rect.x >= SCREEN_WIDTH/2 ) {
-		state->info.character->rect.x = SCREEN_WIDTH/2;
-	}
-	else if(state->info.character->rect.x < SCREEN_WIDTH/2 && forward == -1){
-		state->info.character->rect.x = SCREEN_WIDTH/2;
-	}
-	if(keys->enter == false && keys->left == false && keys->right == false && keys->up == false && keys->n == false && keys->p == false ){
-		state->info.character->rect.x += 7*(forward);
-		
-		if(state->info.character->rect.y > 220 && up == -1)
-			state->info.character->rect.y += 15*(up);
-		else{
-			up = 0;
-			if(state->info.character->rect.y < SCREEN_HEIGHT - state->info.character->rect.height )
-				state->info.character->rect.y += 15;
-		}	
-	}	
-	else if(keys->right != false) {
-		if(forward == -1) {
-			state->info.character->forward = true;
-			forward = 1;
-		}
-	}		
-	else if(keys->left != false){
-		forward = -1;
-		state->info.character->forward = false;
-
-	}
-	else if(keys->up != false && (state->info.character->rect.y == SCREEN_HEIGHT - state->info.character->rect.height)){
-		up = -1;
-	}
-	
 	if(flag2 == 1) {
-		printf("--------\n");
 		list_update = list_create(free);
 		for(SetNode node = set_first(state->objects);        
 			node != SET_EOF;                       
 			node = set_next(state->objects, node)) {
 			
 			Object temp = set_node_value(state->objects, node);
-			float x  = temp->rect.x;
 			Object obj_to_insert = malloc(sizeof(*obj_to_insert));
-			obj_to_insert->rect.x = x; 
+			obj_to_insert->rect.x = temp->rect.x; 
 			obj_to_insert->rect.y = temp->rect.y;
 			obj_to_insert->type = temp->type;
 			obj_to_insert->forward = temp->forward;
+			
 			list_insert_next(list_update, list_last(list_update), obj_to_insert);
 		}
+		flag2 = 0;		
 	}
-	flag2 = 0;
+	
+	if((keys->enter == true) && (state->info.playing == false) ){
+		set_destroy(state->objects);
+		state_init(state);
+	}
 
-	for(ListNode node = list_first(list_update);       
-		node != LIST_EOF;                         
-		node = list_next(list_update, node)) {
+	if((keys->p == true) && (state->info.paused == true)) {
+		state->info.paused = false;
+		return;
+	}
+
+	if(state->info.playing == true && state->info.paused == false) {	
+		fast = 1;
+		if(state->info.character->rect.x >= SCREEN_WIDTH/3) {
+			state->info.character->rect.x = SCREEN_WIDTH/3;
+		}
+		else if(state->info.character->rect.x < SCREEN_WIDTH/3 && forward == -1){
+			state->info.character->rect.x = SCREEN_WIDTH/3;
+		}
+		if(keys->enter == false && keys->left == false && keys->right == false && keys->up == false && keys->n == false && keys->p == false ){
+			state->info.character->rect.x += 7*(forward);
+			
+			if(state->info.character->rect.y > 220 && up == -1)
+				state->info.character->rect.y += 15*(up);
+			else{
+				up = 0;
+				if(state->info.character->rect.y < SCREEN_HEIGHT - state->info.character->rect.height )
+					state->info.character->rect.y += 15;
+			}	
+		}	
+		else if(keys->right != false) {
+			if(forward == -1) {
+				state->info.character->forward = true;
+				forward = 1;
+			}
+			fast = 2;
+		}		
+		else if(keys->left != false){
+			forward = -1;
+			state->info.character->forward = false;
+
+		}
+		else if(keys->up != false && (state->info.character->rect.y == SCREEN_HEIGHT - state->info.character->rect.height)){
+			up = -1;
+		}
+		else if(keys->p != false){
+			state->info.paused = true;
+		}
 		
-		//printf("%f ", ((Object)(list_node_value(list_update, node)))->rect.x);	
-
-		int flag = 0;
-		Object t_obj = list_node_value(list_update, node);
-		//printf("%d ", t_obj->type);
-
-		if(t_obj->type == ENEMY) {
+		
+		for(ListNode node = list_first(list_update);        
+			node != LIST_EOF;                       
+			node = list_next(list_update, node)) {
 			
-			// if(CheckCollisionRecs(t_obj->rect, state->info.character->rect) == 1){ 
-			// 	state->info.playing = false;
-			// 	exit(1);
-			// }
+			Object obj = list_node_value(list_update, node);
 
-			if(t_obj->forward == true)	f = -1;
-			else 	f = 1;
-							
-			Object existing_object = malloc(sizeof(*existing_object));
+			if(obj->type == ENEMY) {
+				
+				if(CheckCollisionRecs(obj->rect, state->info.character->rect)){ 
+					state->info.playing = false;
+					return;
+				}
 
-			if(t_obj->forward == false) {
-				
-				existing_object = (Object)set_find_eq_or_smaller(state->objects, t_obj);
-				
-				if(existing_object != NULL){
-					//printf("%d %f,", existing_object->type, existing_object->rect.x);
-					if((CheckCollisionRecs(existing_object->rect, t_obj->rect) == 1) && (existing_object->type == OBSTACLE)) {	
-						printf("1 ");					
-						flag = 1;
+				Object greater_obj = (Object)set_find_eq_or_greater(state->objects, obj);
+				Object smaller_obj = (Object)set_find_smaller(state->objects, obj);
+
+				if(smaller_obj != NULL && greater_obj != NULL) {
+			
+					Object temp = malloc(sizeof(*temp));
+
+					temp->rect.x = obj->rect.x - 5;
+					if(CheckCollisionRecs(temp->rect, smaller_obj->rect)) {
+						obj->forward = !(obj->forward);
 						f = f*(-1);
-						t_obj->forward = !(t_obj->forward); 
-						//printf("-%f %f\n",existing_object->rect.x, t_obj->rect.x);
-						//exit(1);
-						//set_remove(state->objects, obj);
-						//obj->rect.x += 5;
-						//set_insert(state->objects, obj);
-						//exit(1);
 					}
-					else {
-						t_obj->rect.x -= 5;
-					}
-				}
-				else {
-					t_obj->rect.x -= 5;
-				}	
-			}
-			else {
-				
-				//Object existing_object = malloc(sizeof(*existing_object));
-				existing_object = (Object)set_find_eq_or_greater(state->objects, t_obj);
-				
-				if(existing_object != NULL){
-					if(CheckCollisionRecs(existing_object->rect, t_obj->rect) == 1 && (existing_object->type == OBSTACLE)) {	
-						printf("2 ");
-						flag = 1;
-						f = f*(-1);					
-						t_obj->forward = !(t_obj->forward); 
-						//printf("--%f %f\n",existing_object->rect.x, obj->rect.x);
-						//exit(1);
-						//set_remove(state->objects, obj);
-						//obj->rect.x += 5;
-						//set_insert(state->objects, obj);
-						//exit(1);
-					}
-					else {
-						t_obj->rect.x += 5;
-					}
-				}
-				else {
-					t_obj->rect.x += 5;
-				}
-			}
-			if(flag == 1) {
-				Object to_remove = (Object)set_find(state->objects, t_obj);
-				set_remove(state->objects, to_remove);
-				to_remove->rect.x -= 5*f;
-				set_insert(state->objects, to_remove);
-			}
-			//free(existing_object);		
 
-		}
-		else if(t_obj->type == OBSTACLE) {
-			t_obj->rect.x -= 7*forward;
-			// if(CheckCollisionRecs(state->info.character->rect, t_obj->rect) == 1){
-			// 	state->info.playing = false;
-			// 	exit(1);				
-			// }
-		}
-		else if(t_obj->type == PORTAL){
-			
-			t_obj->rect.x -= 7*forward; 
-			
-			if((CheckCollisionRecs(t_obj->rect, state->info.character->rect) == 1)) { 
-				
-				PortalPair pair = malloc(sizeof(*pair));
-				pair->entrance = (Object)(create_int(state->info.current_portal));    
-				
-				MapNode map_node = map_find_node(state->portal_pairs, pair->entrance);
-				if(map_node != MAP_EOF) {
-					state->info.current_portal = *(int*)map_node_value(state->portal_pairs, map_node);
-					if((pair->exit) == (Object)create_int(100)) {
-						state->info.wins += 1;
-						state->info.playing = false;
+					temp->rect.x = obj->rect.x + 5;
+					if(CheckCollisionRecs(temp->rect, smaller_obj->rect)) {
+						obj->forward = !(obj->forward);
+						f = f*(-1);
 					}
 				}
-
-				if(state->info.character->forward == false) {
+				obj->rect.x -= 5*f;
+			}
+			else if(obj->type == OBSTACLE) {
+				obj->rect.x -= 7*forward;  
+				if(CheckCollisionRecs(obj->rect, state->info.character->rect)){ 
+					state->info.playing = false;
+					return;
+				}  
+			}
+			else if(obj->type == PORTAL){
+				
+				obj->rect.x -= 7*forward;
+				
+				if((CheckCollisionRecs(obj->rect, state->info.character->rect))) { 
+					
+					PortalPair pair = malloc(sizeof(*pair));
 					pair->entrance = (Object)(create_int(state->info.current_portal));    
-				
+					
 					MapNode map_node = map_find_node(state->portal_pairs, pair->entrance);
 					if(map_node != MAP_EOF) {
 						state->info.current_portal = *(int*)map_node_value(state->portal_pairs, map_node);
@@ -311,15 +263,34 @@ void state_update(State state, KeyState keys) {
 							state->info.playing = false;
 						}
 					}
-				}		
-				
+
+					if(state->info.character->forward == false) {
+						pair->entrance = (Object)(create_int(state->info.current_portal));    
+					
+						MapNode map_node = map_find_node(state->portal_pairs, pair->entrance);
+						if(map_node != MAP_EOF) {
+							state->info.current_portal = *(int*)map_node_value(state->portal_pairs, map_node);
+							if((pair->exit) == (Object)create_int(100)) {
+								state->info.wins += 1;
+								state->info.playing = false;
+							}
+						}
+					}		
+					
+				}
 			}
-
 		}
-		//printf("%f ", t_obj->rect.x);
+		
+		ListNode lnode = list_first(list_update);
+		for(SetNode node = set_first(state->objects);        
+			node != SET_EOF;                       
+			node = set_next(state->objects, node)) {
 
+			set_remove(state->objects, set_node_value(state->objects, node));
+			set_insert(state->objects, list_node_value(list_update, lnode));	
+			lnode = list_next(list_update, lnode);
+		}
 	}
-	//printf("\n\n");
 	
 }
 

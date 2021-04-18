@@ -11,8 +11,8 @@ CFLAGS = -Wall -g -Werror -I$(INCLUDE)
 LDFLAGS = -lm
 
 # Αρχεία .o
-# OBJS = $(MODULES)/game.o $(MODULES)/interface.o  $(MODULES)/state.o $(LIB)/k08.a $(LIB)/libraylib.a
-OBJS = $(MODULES)/game.o $(MODULES)/interface.o  $(MODULES)/state_alt.o $(LIB)/k08.a $(LIB)/libraylib.a
+OBJS = $(MODULES)/game.o $(MODULES)/interface.o  $(MODULES)/state.o $(LIB)/k08.a $(LIB)/libraylib.a
+# OBJS = $(MODULES)/game.o $(MODULES)/interface.o  $(MODULES)/state_alt.o $(LIB)/k08.a $(LIB)/libraylib.a
 # OBJS = set_utils_test.o $(LIB)/k08.a $(LIB)/libraylib.a
 # OBJS = state_alt_test.o $(MODULES)/state_alt.o $(LIB)/k08.a $(LIB)/libraylib.a
 # OBJS = state_test.o $(MODULES)/state.o $(LIB)/k08.a $(LIB)/libraylib.a

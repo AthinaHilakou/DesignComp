@@ -14,5 +14,6 @@ __Α.Μ.__: sdi2000067
 
 ### Documentation
 
-Το παιχνιδι βασιζεται στο δωσμενο game play με ελαχιστες διαφορες οπως καποια υψη στο interface.
+Στο Makefile βρισκονται ολοι οι πιθανοι συνδιασμοι απο object files (complete game
+με 2 υπολοιησεις και tests για state, state_alt, set_utils).
 

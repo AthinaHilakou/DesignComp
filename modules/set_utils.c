@@ -2,7 +2,6 @@
 #include <stdio.h>
 #include "ADTVector.h"
 #include "ADTSet.h"
-//#include "set_utils.h"
 #include "state.h"
 
 
@@ -42,28 +41,6 @@ Pointer set_find_eq_or_smaller(Set set, Pointer value){
         node != SET_EOF;                        
         node = set_next(set, node)) {          
         
-        if(compare(set_node_value(set, node), value) < 0)  
-           d = set_node_value(set, node);
-        else    
-            return d;    
-    }
-
-    return NULL;
-}
-
-
-
-
-Pointer set_find_smaller(Set set, Pointer value){
-    
-    if(set_find_node(set, value) != SET_EOF) 
-       return value;
-
-    for(SetNode node = set_first(set);        
-        node != SET_EOF;                        
-        node = set_next(set, node)) {          
-        
-        Pointer d;
         if(compare(set_node_value(set, node), value) < 0)  
            d = set_node_value(set, node);
         else    

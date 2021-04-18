@@ -7,6 +7,13 @@
 
 List list_update;
 
+struct state {
+	Set objects;			// περιέχει στοιχεία Object (Εμπόδια / Εχθροί / Πύλες)
+	Map portal_pairs;		// περιέχει PortalPair (ζευγάρια πυλών, είσοδος/έξοδος)
+
+	struct state_info info;
+};
+
 typedef struct portal_pair {
 	Object entrance;		// η πύλη entrance
 	Object exit;			// οδηγεί στην exit
@@ -30,13 +37,13 @@ int* create_int(int value) {
 
 void state_init(State state) {
 	// Γενικές πληροφορίες
-	state->info.current_portal = 1;			// Δεν έχουμε περάσει καμία πύλη
-	state->info.wins = 0;					// Δεν έχουμε νίκες ακόμα
-	state->info.playing = true;				// Το παιχνίδι ξεκινάει αμέσως
-	state->info.paused = false;				// Χωρίς να είναι paused.
+	(state_info(state))->current_portal = 1;			// Δεν έχουμε περάσει καμία πύλη
+	(state_info(state))->wins = 0;					// Δεν έχουμε νίκες ακόμα
+	(state_info(state))->playing = true;				// Το παιχνίδι ξεκινάει αμέσως
+	(state_info(state))->paused = false;				// Χωρίς να είναι paused.
 
 	// Πληροφορίες για το χαρακτήρα.
-	Object character = state->info.character = malloc(sizeof(*character));
+	Object character = (state_info(state))->character = malloc(sizeof(*character));
 	character->type = CHARACTER;
 	character->forward = true;
 	character->jumping = false;
@@ -119,9 +126,8 @@ List state_objects(State state, float x_from, float x_to) {
 	for(float x = x_from; x <= x_to; x++) {
 		obj->rect.x = x;
 		Object object = set_find(state->objects, obj);
-		if(object != NULL) {
-			list_insert_next(list, list_last(list), object);
-		}	
+		if(object != NULL) 
+			list_insert_next(list, list_last(list), object);	
 	}
 	return list;
 }
@@ -134,11 +140,11 @@ float* create_float(float value) {
 
 
 
-int forward = 1, f = 1, up = 0, flag2 = 1, fast;
+int forward = 1, f, up = 0, flag = 1, fast;
 
 void state_update(State state, KeyState keys) {	
 	
-	if(flag2 == 1) {
+	if(flag == 1) {                                    // αρχικοποιηση της λιστας πανω στην οποια θα γινει το iteration
 		list_update = list_create(free);
 		for(SetNode node = set_first(state->objects);        
 			node != SET_EOF;                       
@@ -153,58 +159,60 @@ void state_update(State state, KeyState keys) {
 			
 			list_insert_next(list_update, list_last(list_update), obj_to_insert);
 		}
-		flag2 = 0;		
+		flag = 0;		
 	}
 	
-	if((keys->enter == true) && (state->info.playing == false) ){
+	if((keys->enter == true) && ((state_info(state))->playing == false) ){
 		set_destroy(state->objects);
 		state_init(state);
 	}
 
-	if((keys->p == true) && (state->info.paused == true)) {
-		state->info.paused = false;
+	if((keys->p == true) && ((state_info(state))->paused == true)) {
+		(state_info(state))->paused = false;
 		return;
 	}
 
-	if(state->info.playing == true && state->info.paused == false) {	
+	if((state_info(state))->playing == true && (state_info(state))->paused == false) {	
 		fast = 1;
-		if(state->info.character->rect.x >= SCREEN_WIDTH/3) {
-			state->info.character->rect.x = SCREEN_WIDTH/3;
+		if((state_info(state))->character->rect.x >= SCREEN_WIDTH/3) {
+			(state_info(state))->character->rect.x = SCREEN_WIDTH/3;
 		}
-		else if(state->info.character->rect.x < SCREEN_WIDTH/3 && forward == -1){
-			state->info.character->rect.x = SCREEN_WIDTH/3;
+		else if((state_info(state))->character->rect.x < SCREEN_WIDTH/3 && forward == -1){
+			(state_info(state))->character->rect.x = SCREEN_WIDTH/3;
 		}
 		if(keys->enter == false && keys->left == false && keys->right == false && keys->up == false && keys->n == false && keys->p == false ){
-			state->info.character->rect.x += 7*(forward);
+			(state_info(state))->character->rect.x += 7*(forward);
 			
-			if(state->info.character->rect.y > 220 && up == -1)
-				state->info.character->rect.y += 15*(up);
+			if((state_info(state))->character->rect.y > 220 && up == -1)
+				(state_info(state))->character->rect.y += 15*(up);
 			else{
 				up = 0;
-				if(state->info.character->rect.y < SCREEN_HEIGHT - state->info.character->rect.height )
-					state->info.character->rect.y += 15;
+				if((state_info(state))->character->rect.y < SCREEN_HEIGHT - (state_info(state))->character->rect.height )
+					(state_info(state))->character->rect.y += 15;
 			}	
 		}	
 		else if(keys->right != false) {
 			if(forward == -1) {
-				state->info.character->forward = true;
+				(state_info(state))->character->forward = true;
 				forward = 1;
 			}
+			else
 			fast = 2;
 		}		
 		else if(keys->left != false){
 			forward = -1;
-			state->info.character->forward = false;
+			(state_info(state))->character->forward = false;
 
 		}
-		else if(keys->up != false && (state->info.character->rect.y == SCREEN_HEIGHT - state->info.character->rect.height)){
+		else if(keys->up != false && ((state_info(state))->character->rect.y == SCREEN_HEIGHT - (state_info(state))->character->rect.height)){
 			up = -1;
 		}
 		else if(keys->p != false){
-			state->info.paused = true;
+			(state_info(state))->paused = true;
 		}
 		
-		
+		// θα ενημερωσω τα οbjects της λιστας, θα κοιταξω μεσω των set_find του set_utils
+		// αν προκειται να υπαρξει collision και στο τελος θα κανω remove/ insert στο set
 		for(ListNode node = list_first(list_update);        
 			node != LIST_EOF;                       
 			node = list_next(list_update, node)) {
@@ -213,36 +221,47 @@ void state_update(State state, KeyState keys) {
 
 			if(obj->type == ENEMY) {
 				
-				if(CheckCollisionRecs(obj->rect, state->info.character->rect)){ 
-					state->info.playing = false;
+				if(obj->forward == false)
+					f = 1;
+				else 
+					f = -1;	
+
+				// συγκρουση χαρακτηρα με εχθρο
+				if(CheckCollisionRecs(obj->rect, (state_info(state))->character->rect)){ 
+					(state_info(state))->playing = false;
 					return;
 				}
 
+				// ψαχνω το προηγουμενο και το επομενο αντικειμενο
 				Object greater_obj = (Object)set_find_eq_or_greater(state->objects, obj);
-				Object smaller_obj = (Object)set_find_smaller(state->objects, obj);
+				Object smaller_obj = (Object)set_find_eq_or_smaller(state->objects, obj);
 
 				if(smaller_obj != NULL && greater_obj != NULL) {
 			
 					Object temp = malloc(sizeof(*temp));
-
-					temp->rect.x = obj->rect.x - 5;
+					
+					// κοιταω αν θα υπαρξει collision  αν προχωρησει
+					temp->rect.x = obj->rect.x - 5*f;       
 					if(CheckCollisionRecs(temp->rect, smaller_obj->rect)) {
 						obj->forward = !(obj->forward);
-						f = f*(-1);
+						return;
 					}
 
-					temp->rect.x = obj->rect.x + 5;
+					temp->rect.x = obj->rect.x - 5*f;
 					if(CheckCollisionRecs(temp->rect, smaller_obj->rect)) {
 						obj->forward = !(obj->forward);
-						f = f*(-1);
+						return;
 					}
 				}
 				obj->rect.x -= 5*f;
 			}
 			else if(obj->type == OBSTACLE) {
+				
 				obj->rect.x -= 7*forward;  
-				if(CheckCollisionRecs(obj->rect, state->info.character->rect)){ 
-					state->info.playing = false;
+				
+				// συγκρουση χαρακτηρα με εμποδιο
+				if(CheckCollisionRecs(obj->rect, (state_info(state))->character->rect)){ 
+					(state_info(state))->playing = false;
 					return;
 				}  
 			}
@@ -250,29 +269,30 @@ void state_update(State state, KeyState keys) {
 				
 				obj->rect.x -= 7*forward;
 				
-				if((CheckCollisionRecs(obj->rect, state->info.character->rect))) { 
+				// συγκρουση χαρακτηρα με πυλη
+				if((CheckCollisionRecs(obj->rect, (state_info(state))->character->rect))) { 
 					
 					PortalPair pair = malloc(sizeof(*pair));
-					pair->entrance = (Object)(create_int(state->info.current_portal));    
+					pair->entrance = (Object)(create_int((state_info(state))->current_portal));    
 					
 					MapNode map_node = map_find_node(state->portal_pairs, pair->entrance);
 					if(map_node != MAP_EOF) {
-						state->info.current_portal = *(int*)map_node_value(state->portal_pairs, map_node);
+						(state_info(state))->current_portal = *(int*)map_node_value(state->portal_pairs, map_node);
 						if((pair->exit) == (Object)create_int(100)) {
-							state->info.wins += 1;
-							state->info.playing = false;
+							(state_info(state))->wins += 1;
+							(state_info(state))->playing = false;
 						}
 					}
 
-					if(state->info.character->forward == false) {
-						pair->entrance = (Object)(create_int(state->info.current_portal));    
+					if((state_info(state))->character->forward == false) {
+						pair->entrance = (Object)(create_int((state_info(state))->current_portal));    
 					
 						MapNode map_node = map_find_node(state->portal_pairs, pair->entrance);
 						if(map_node != MAP_EOF) {
-							state->info.current_portal = *(int*)map_node_value(state->portal_pairs, map_node);
+							(state_info(state))->current_portal = *(int*)map_node_value(state->portal_pairs, map_node);
 							if((pair->exit) == (Object)create_int(100)) {
-								state->info.wins += 1;
-								state->info.playing = false;
+								(state_info(state))->wins += 1;
+								(state_info(state))->playing = false;
 							}
 						}
 					}		
@@ -281,11 +301,12 @@ void state_update(State state, KeyState keys) {
 			}
 		}
 		
+		// αλλαγη της διαταξης του set
 		ListNode lnode = list_first(list_update);
 		for(SetNode node = set_first(state->objects);        
 			node != SET_EOF;                       
 			node = set_next(state->objects, node)) {
-
+			
 			set_remove(state->objects, set_node_value(state->objects, node));
 			set_insert(state->objects, list_node_value(list_update, lnode));	
 			lnode = list_next(list_update, lnode);

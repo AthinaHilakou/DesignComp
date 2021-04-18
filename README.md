@@ -14,6 +14,7 @@ __Α.Μ.__: sdi2000067
 
 ### Documentation
 
-Στο Makefile βρισκονται ολοι οι πιθανοι συνδιασμοι απο object files (complete game
+Μodules: 1-6
+Στο Makefile βρισκονται ολοι οι πιθανοι συνδυασμοι απο object files (complete game
 με 2 υπολοιησεις και tests για state, state_alt, set_utils).
-
+Τα assets βρισκονται στο modules direcory (καταλαθος και εξω απο αυτο).

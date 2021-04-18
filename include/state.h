@@ -2,7 +2,12 @@
 
 #include "raylib.h"
 #include "ADTList.h"
+#include "ADTVector.h"
+#include "ADTMap.h"
+#include "ADTSet.h"
 
+#define SCREEN_WIDTH 800
+#define SCREEN_HEIGHT 450
 #define PORTAL_NUM 100		// πόσα portals υπάρχουν στην πίστα
 #define SPACING 700			// απόσταση ανάμεσα στα αντικείμενα της πίστας
 
@@ -27,7 +32,7 @@ typedef struct state_info {
 	bool paused;					// true αν το παιχνίδι είναι paused
 }* StateInfo;
 
-// Πλοροφορίες για το ποια πλήκτρα είναι πατημένα
+// Πληροφορίες για το ποια πλήκτρα είναι πατημένα
 typedef struct key_state {
 	bool up;						// true αν το αντίστοιχο πλήκτρο είναι πατημένο
 	bool left;
@@ -35,7 +40,8 @@ typedef struct key_state {
 	bool enter;
 	bool n;
 	bool p;
-}* KeyState;
+}* KeyState; 
+
 
 // Η κατάσταση του παιχνιδιού (handle)
 typedef struct state* State;
@@ -62,3 +68,4 @@ void state_update(State state, KeyState keys);
 // Καταστρέφει την κατάσταση state ελευθερώνοντας τη δεσμευμένη μνήμη.
 
 void state_destroy(State state);
+

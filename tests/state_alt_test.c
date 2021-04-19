@@ -10,6 +10,12 @@
 #include "ADTMap.h"
 #include "state.h"
 
+struct state {
+	Set objects;			// περιέχει στοιχεία Object (Εμπόδια / Εχθροί / Πύλες)
+	Map portal_pairs;		// περιέχει PortalPair (ζευγάρια πυλών, είσοδος/έξοδος)
+
+	struct state_info info;
+};
 
 void test_state_alt() {
 	State state = state_create();

@@ -14,6 +14,12 @@ typedef struct portal_pair {
 	Object exit;			// οδηγεί στην exit
 }* PortalPair;
 
+struct state {
+	Vector objects;			// περιέχει στοιχεία Object (Εμπόδια / Εχθροί / Πύλες)
+	List portal_pairs;		// περιέχει PortalPair (ζευγάρια πυλών, είσοδος/έξοδος)
+
+	struct state_info info;
+};
 
 void test_state_create() {
 

@@ -17,9 +17,9 @@ void interface_init() {
 	InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Game");
 	SetTargetFPS(60); 
 
-	mario_img = LoadTextureFromImage(LoadImage("../modules/mario.png"));
-	mario2_img = LoadTextureFromImage(LoadImage("../modules/mario2.png"));
-	enemy_img = LoadTextureFromImage(LoadImage("../modules/enemy.png"));
+	mario_img = LoadTextureFromImage(LoadImage("../../mario.png"));
+	mario2_img = LoadTextureFromImage(LoadImage("../../mario2.png"));
+	enemy_img = LoadTextureFromImage(LoadImage("../../enemy.png"));
 }
 
 void interface_close() {
